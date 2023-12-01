@@ -5,23 +5,29 @@ services:
       context: ./docker
       dockerfile: Dockerfile.compose
     entrypoint: /compose-entrypoint.sh
-    ports:
-      - '3000:3000'
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
+    expose:
+      - 80
+      - 443
+    env_file:
+      - .env
+      #depends_on:
+      #postgres:
+      #  condition: service_healthy
+      #redis:
+      #  condition: service_started
     environment:
-      - HOST=localhost
+      - HOST=auto.chunyen.xyz
       - PROTOCOL=http
-      - PORT=3000
+      - PORT=80
+      - WEB_APP_URL=https://auto.chunyen.xyz
       - APP_ENV=production
-      - REDIS_HOST=redis
-      - POSTGRES_HOST=postgres
-      - POSTGRES_DATABASE=automatisch
-      - POSTGRES_USERNAME=automatisch_user
-      - POSTGRES_PASSWORD=automatisch_password
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - POSTGRES_HOST=${POSTGRESQL_HOST}
+      - POSTGRES_PORT=${POSTGRESQL_PORT}
+      - POSTGRES_DATABASE=${POSTGRESQL_DATABASE}
+      - POSTGRES_USERNAME=${POSTGRESQL_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRESQL_PASSWORD}
       - ENCRYPTION_KEY
       - WEBHOOK_SECRET_KEY
       - APP_SECRET_KEY
@@ -34,36 +40,61 @@ services:
     entrypoint: /compose-entrypoint.sh
     depends_on:
       - main
+    env_file:
+      - .env
     environment:
       - APP_ENV=production
-      - REDIS_HOST=redis
-      - POSTGRES_HOST=postgres
-      - POSTGRES_DATABASE=automatisch
-      - POSTGRES_USERNAME=automatisch_user
-      - POSTGRES_PASSWORD=automatisch_password
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - POSTGRES_HOST=${POSTGRESQL_HOST}
+      - POSTGRES_PORT=${POSTGRESQL_PORT}
+      - POSTGRES_DATABASE=${POSTGRESQL_DATABASE}
+      - POSTGRES_USERNAME=${POSTGRESQL_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRESQL_PASSWORD}
       - ENCRYPTION_KEY
       - WEBHOOK_SECRET_KEY
       - APP_SECRET_KEY
       - WORKER=true
     volumes:
       - automatisch_storage:/automatisch/storage
-  postgres:
-    image: 'postgres:14.5'
-    environment:
-      - POSTGRES_DB=automatisch
-      - POSTGRES_USER=automatisch_user
-      - POSTGRES_PASSWORD=automatisch_password
+        
+        #postgres:
+        # image: 'postgres:14.5'
+        # environment:
+        #- POSTGRES_DB=automatisch
+        #- POSTGRES_USER=automatisch_user
+        #- POSTGRES_PASSWORD=automatisch_password
+        #volumes:
+        #- postgres_data:/var/lib/postgresql/data
+        #healthcheck:
+        #test:
+        #[
+        #  'CMD-SHELL',
+        #  'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}'
+        #]
+        #interval: 10s
+        #timeout: 5s
+        #retries: 5
+  
+        #redis:
+        #image: 'redis:7.0.4'
+        #volumes:
+        #- redis_data:/data
+
+  nginx:
+    container_name: automatisch_nginx
+    image: nginx
+    ports:
+      - "80:80"
+      - "443:443"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-  redis:
-    image: 'redis:7.0.4'
-    volumes:
-      - redis_data:/data
+      - ./conf/nginx.conf:/etc/nginx/nginx.conf
+      - ./conf/default.conf:/etc/nginx/conf.d/default.conf
+      - ./certs:/etc/nginx/certs
+    depends_on:
+      - main
+    restart: always
+
 volumes:
   automatisch_storage:
   postgres_data:

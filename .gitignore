@@ -128,3 +128,6 @@ dist
 
 # MacOS finder preferences
 .DS_store
+
+# Web Server
+certs/
